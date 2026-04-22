@@ -69,9 +69,7 @@ npx codemod workflow run -w workflow.yaml -s ./src
 |---------------------------------|-------------------|
 | `wagmi/providers/alchemy`       | `viem`            |
 | `wagmi/providers/public`        | `viem`            |
-| `erc20ABI`                      | `er
-
-`            |
+| `erc20ABI`                      | `erc20Abi`        |
 
 ## Test
 
@@ -107,9 +105,7 @@ The codemod runs as a TypeScript script executed via the codemod platform's JSSG
 11. `setLastUsedConnector` → `storage?.setItem` pattern
 12. `clearState()` → TODO comment
 13. `autoConnect()` → TODO comment
-14. `erc20ABI` → `er
-
-`
+14. `erc20ABI` → `erc20Abi`
 15. `useToken` import cleanup → TODO comment
 
 Phase ordering prevents edit conflicts: new-expression transforms run before identifier renames, type renames run before component renames.
