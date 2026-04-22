@@ -1,0 +1,18 @@
+schema_version: "1.0"
+
+name: "wagmi-v1-to-v2"
+version: "0.1.0"
+description: "Migrate wagmi v1 codebases to v2 — hook renames, connector changes, config updates, and breaking changes"
+author: "Coder"
+license: "MIT"
+workflow: "workflow.yaml"
+category: "migration"
+
+targets:
+  languages: ["typescript", "javascript"]
+
+keywords: ["breaking-change", "upgrade", "v1-to-v2", "wagmi", "react", "viem"]
+
+registry:
+  access: "public"
+  visibility: "public"
