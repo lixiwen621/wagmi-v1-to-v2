@@ -3,7 +3,63 @@
 [![codemod](https://img.shields.io/badge/codemod-wagmi--v1--to--v2-blue)](https://codemod.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Automated codemod to migrate [wagmi](https://wagmi.sh) v1 codebases to v2. Handles 15 transformation phases across hook renames, connector changes, config updates, and breaking API changes.
+**AST-based codemod that migrates wagmi v1 → v2 in one command**, covering all breaking changes from 15 transformation phases.
+
+## Why
+
+wagmi v2 introduced [30+ breaking changes](https://wagmi.sh/react/guides/migrate-from-v1-to-v2) — hooks renamed, connectors restructured, config APIs rewritten. Migrating a real project means touching dozens of files by hand. This codemod automates the mechanical work so you can focus on the architectural decisions.
+
+Run once, get every hook renamed, every connector updated, and TODO comments where manual review is needed.
+
+## Before → After
+
+**v1 (before):**
+```tsx
+import { WagmiConfig, createConfig } from 'wagmi'
+import { configureChains } from 'wagmi'
+import { injected, WalletConnectConnector } from 'wagmi/connectors'
+import { useNetwork, useContractRead, useFeeData } from 'wagmi'
+import { erc20ABI } from 'wagmi'
+
+const { chains, publicClient } = configureChains([mainnet], [...providers])
+
+const config = createConfig({
+  autoConnect: true,
+  publicClient,
+  connectors: [
+    new WalletConnectConnector({ options: { projectId: '...' } }),
+  ],
+})
+
+function MyComponent() {
+  const { chain } = useNetwork()
+  const { data: balance } = useContractRead({ abi: erc20ABI, ... })
+  const { data: fee } = useFeeData()
+}
+```
+
+**v2 (after running this codemod):**
+```tsx
+import { WagmiProvider, createConfig } from 'wagmi'
+// TODO: configureChains removed in wagmi v2, use createConfig with chains and transports directly
+import { injected, walletConnect } from 'wagmi/connectors'
+import { useAccount, useReadContract, useEstimateFeesPerGas } from 'wagmi'
+import { erc20Abi } from 'wagmi'
+
+const config = createConfig({
+  // TODO: autoConnect removed - use WagmiProvider reconnectOnMount or useReconnect,
+  // TODO: publicClient removed - use transports instead,
+  connectors: [
+    walletConnect({ options: { projectId: '...' } }),
+  ],
+})
+
+function MyComponent() {
+  const { chain } = useAccount()
+  const { data: balance } = useReadContract({ abi: erc20Abi, ... })
+  const { data: fee } = useEstimateFeesPerGas()
+}
+```
 
 ## Quick Start
 
@@ -15,6 +71,24 @@ npm i -g codemod
 
 # Run on your project
 npx codemod workflow run -w workflow.yaml -s ./src
+```
+
+## Sample Output
+
+```
+Processing 9 files...
+
+App.tsx              12 edits (WagmiConfig→WagmiProvider, erc20ABI→erc20Abi, connectors renamed)
+TokenBalance.tsx      5 edits (useContractRead→useReadContract, useFeeData→useEstimateFeesPerGas)
+TransactionHistory.tsx 4 edits (useContractWrite→useWriteContract, useWaitForTransaction→useWaitForTransactionReceipt)
+WalletConnect.tsx     5 edits (useNetwork→useAccount, useSwitchNetwork→useSwitchChain)
+Header.tsx            1 edit  (useNetwork→useAccount)
+config/wagmi.ts       6 edits (configureChains→TODO, setLastUsedConnector→storage.setItem)
+hooks/useTokenInfo.ts 2 edits (useToken import/call→TODO comments)
+hooks/useERC20Balance.ts 3 edits (useContractRead→useReadContract)
+utils/helpers.ts      2 edits (useFeeData→useEstimateFeesPerGas, useSwitchNetwork→useSwitchChain)
+
+Done: 40 edits across 9 files
 ```
 
 ## Transformations
