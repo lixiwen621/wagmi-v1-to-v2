@@ -1,0 +1,33 @@
+{
+  "name": "wagmi-v1-to-v2",
+  "version": "1.0.0",
+  "description": "[![codemod](https://img.shields.io/badge/codemod-wagmi--v1--to--v2-blue)](https://codemod.com) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lixiwen621/wagmi-v1-to-v2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lixiwen621/wagmi-v1-to-v2/issues"
+  },
+  "homepage": "https://github.com/lixiwen621/wagmi-v1-to-v2#readme",
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "typescript": "^6.0.3",
+    "viem": "^2.48.4",
+    "wagmi": "^1.4.13"
+  }
+}
