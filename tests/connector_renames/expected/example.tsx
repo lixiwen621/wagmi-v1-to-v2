@@ -1,5 +1,5 @@
-import { walletConnect, coinbaseWallet, injected, safe } from 'wagmi/connectors'
-import { injected } from 'wagmi/connectors'
+import { coinbaseWallet, injected, safe, walletConnect } from 'wagmi/connectors'
+
 
 const wcConnector = walletConnect({
   projectId: 'abc123',

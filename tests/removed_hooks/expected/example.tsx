@@ -1,5 +1,5 @@
 import { useAccount } from 'wagmi'
-import { useAccount } from 'wagmi'
+
 
 const { chain } = useAccount()
 

@@ -1,6 +1,8 @@
-import { WagmiProvider } from 'wagmi'
-import { WagmiProviderProps, createConfig } from 'wagmi'
-import { UseAccountParameters, UseAccountReturnType } from 'wagmi'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+// TODO: Wrap <WagmiProvider> with <QueryClientProvider client={new QueryClient()}>
+import { UseAccountParameters, UseAccountReturnType, WagmiProvider, WagmiProviderProps, createConfig } from 'wagmi'
+
+
 
 function App({ config }: WagmiProviderProps) {
   return (

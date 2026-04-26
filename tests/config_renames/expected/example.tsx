@@ -1,6 +1,7 @@
 import { configureChains, createConfig } from 'wagmi'
-import { mainnet, sepolia } from 'wagmi'
-import { publicProvider } from 'viem'
+
+// TODO: wagmi/providers/public removed in wagmi v2, use http() transport from viem instead
+import { mainnet, sepolia } from 'wagmi/chains'
 
 // TODO: configureChains removed in wagmi v2, use createConfig with chains and transports directly
 

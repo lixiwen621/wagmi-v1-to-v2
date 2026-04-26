@@ -1,5 +1,5 @@
-import { useReadContract, useWriteContract, useEstimateFeesPerGas, useSwitchChain } from 'wagmi'
-import { useWaitForTransactionReceipt } from 'wagmi'
+import { useEstimateFeesPerGas, useReadContract, useSwitchChain, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
+
 
 const { data } = useReadContract({
   address: '0x123',

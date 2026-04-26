@@ -9,7 +9,7 @@ workflow: "workflow.yaml"
 category: "migration"
 
 targets:
-  languages: ["typescript", "javascript"]
+  languages: ["typescript"]
 
 keywords: ["breaking-change", "upgrade", "v1-to-v2", "wagmi", "react", "viem"]
 
