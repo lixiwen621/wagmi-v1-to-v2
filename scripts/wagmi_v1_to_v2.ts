@@ -355,28 +355,25 @@ const codemod: Codemod<any> = async (root: any) => {
     }
   }
 
-  // --- Phase 1c: useSwitchNetwork destructuring variable rename ---
-  // v1: const { switchNetwork } = useSwitchNetwork()
-  // v2: const { switchChain } = useSwitchChain()
-  const switchNetworkPatternNodes = [
-    ...rootNode.findAll({ rule: { kind: "identifier", regex: "^switchNetwork$" } }),
-    ...rootNode.findAll({ rule: { kind: "property_identifier", regex: "^switchNetwork$" } }),
-    ...rootNode.findAll({
-      rule: { kind: "shorthand_property_identifier", regex: "^switchNetwork$" },
-    }),
-    ...rootNode.findAll({
-      rule: { kind: "shorthand_property_identifier_pattern", regex: "^switchNetwork$" },
-    }),
-  ];
-  for (const node of switchNetworkPatternNodes) {
-    const declarator = node.ancestors().find((a) => a.kind() === "variable_declarator");
-    if (!declarator) continue;
-    const init = declarator.field("value");
-    if (!init || !/^\s*useSwitchChain\(/.test(init.text())) continue;
+  // --- Phase 1c: useSwitchNetwork → useSwitchChain binding rename (narrow) ---
+  // v1: const { switchNetwork } = useSwitchNetwork() → v2: const { switchChain } = useSwitchChain()
+  // Runs in the same pass as Phase 1; AST text is still the *source* file, so the callee
+  // is still `useSwitchNetwork(` here while Phase 1 emits the hook identifier rename separately.
+  // Match on full declarator text — only `{ switchNetwork }` + direct `useSwitchNetwork(`.
+  const switchChainBindingDeclarators = rootNode.findAll({
+    rule: { kind: "variable_declarator" },
+  });
+  for (const vd of switchChainBindingDeclarators) {
+    const declText = vd.text();
+    if (!/^\{\s*switchNetwork\s*\}\s*=\s*useSwitchNetwork\s*\(/.test(declText)) continue;
+    const nameNode = vd.field("name");
+    if (!nameNode) continue;
+    const nameText = nameNode.text().trim();
+    if (!/^\{\s*switchNetwork\s*\}$/.test(nameText)) continue;
     edits.push({
-      startPos: node.range().start.index,
-      endPos: node.range().end.index,
-      insertedText: "switchChain",
+      startPos: nameNode.range().start.index,
+      endPos: nameNode.range().end.index,
+      insertedText: "{ switchChain }",
     });
     hasChanges = true;
   }

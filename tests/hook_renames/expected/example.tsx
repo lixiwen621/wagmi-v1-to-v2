@@ -12,6 +12,6 @@ const { write } = useWriteContract(config)
 
 const { data: feeData } = useEstimateFeesPerGas()
 
-const { switchNetwork } = useSwitchChain()
+const { switchChain } = useSwitchChain()
 
 const { data: tx } = useWaitForTransactionReceipt({ hash })

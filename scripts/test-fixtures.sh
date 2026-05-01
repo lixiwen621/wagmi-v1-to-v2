@@ -6,6 +6,7 @@ WORKFLOW_FILE="$ROOT_DIR/workflow.yaml"
 CODEMOD_VERSION="${CODEMOD_VERSION:-1.8.2}"
 
 FIXTURES=(
+  "switch_network_destructuring"
   "hook_renames"
   "connector_renames"
   "component_renames"
