@@ -540,11 +540,10 @@ const codemod: Codemod<any> = async (root: any) => {
     }
   }
 
-  // --- Phase 3d: useDisconnect/useConnect return type changes → TODO ---
-  // In wagmi v2, useDisconnect returns a function directly (not an object).
-  // useConnect returns { accounts, chainId } instead of v1's { account, chain, connector }.
+  // --- Phase 3d: useConnect return type change → TODO ---
+  // v1: { account, chain, connector } → v2: { accounts, chainId }
+  // (useDisconnect return type did NOT change — still returns { disconnect, ... })
   for (const { hookName, reason } of [
-    { hookName: "useDisconnect", reason: "useDisconnect returns a function directly in wagmi v2, not an object — update destructuring" },
     { hookName: "useConnect", reason: "useConnect returns { accounts, chainId } in wagmi v2, not { account, chain, connector }" },
   ]) {
     const callNodes = rootNode.findAll({
@@ -811,9 +810,14 @@ const codemod: Codemod<any> = async (root: any) => {
         (a) => a.kind() === "call_expression" && a.text().includes("createConfig")
       );
       if (isInCreateConfig) {
+        // Include trailing comma to avoid dangling-comma syntax issues
+        const pairEnd = parent.range().end.index;
+        const sourceText = rootNode.text();
+        let endPos = pairEnd;
+        if (sourceText[pairEnd] === ",") endPos = pairEnd + 1;
         edits.push({
           startPos: parent.range().start.index,
-          endPos: parent.range().end.index,
+          endPos: endPos,
           insertedText: "    // TODO: autoConnect removed - use WagmiProvider reconnectOnMount or useReconnect",
         });
         hasChanges = true;
@@ -830,11 +834,14 @@ const codemod: Codemod<any> = async (root: any) => {
         (a) => a.kind() === "call_expression" && a.text().includes("createConfig")
       );
       if (!isInCreateConfig) continue;
+      const sourceText = rootNode.text();
       // Handle shorthand property (e.g., publicClient,)
       if (node.kind() === "shorthand_property_identifier") {
+        let endPos = node.range().end.index;
+        if (sourceText[endPos] === ",") endPos = endPos + 1;
         edits.push({
           startPos: node.range().start.index,
-          endPos: node.range().end.index,
+          endPos: endPos,
           insertedText: `// TODO: ${prop} removed - use transports instead`,
         });
         hasChanges = true;
@@ -843,9 +850,11 @@ const codemod: Codemod<any> = async (root: any) => {
       else {
         const parent = node.parent();
         if (parent && parent.kind() === "pair") {
+          let endPos = parent.range().end.index;
+          if (sourceText[endPos] === ",") endPos = endPos + 1;
           edits.push({
             startPos: parent.range().start.index,
-            endPos: parent.range().end.index,
+            endPos: endPos,
             insertedText: `    // TODO: ${prop} removed - use transports instead`,
           });
           hasChanges = true;
@@ -999,10 +1008,13 @@ const codemod: Codemod<any> = async (root: any) => {
         !a.text().includes("useBlock(")
     );
     if (!hookCallAncestor) continue;
-    // Replace the watch pair with TODO
+    // Replace the watch pair with TODO, including trailing comma to avoid syntax errors
+    const src = rootNode.text();
+    let endPos = parent.range().end.index;
+    if (src[endPos] === ",") endPos = endPos + 1;
     edits.push({
       startPos: parent.range().start.index,
-      endPos: parent.range().end.index,
+      endPos: endPos,
       insertedText: "// TODO: watch property removed in wagmi v2 (except useBlock/useBlockNumber), use useBlockNumber + useEffect + invalidateQueries/refetch instead",
     });
     hasChanges = true;
@@ -1028,17 +1040,21 @@ const codemod: Codemod<any> = async (root: any) => {
       (a) => a.kind() === "call_expression"
     );
     if (!hookCallAncestor) continue;
+    const src = rootNode.text();
+    let endPos = parent.range().end.index;
+    if (src[endPos] === ",") endPos = endPos + 1;
     edits.push({
       startPos: parent.range().start.index,
-      endPos: parent.range().end.index,
+      endPos: endPos,
       insertedText: "// TODO: suspense property removed in wagmi v2, use useSuspenseQuery from wagmi/query instead",
     });
     hasChanges = true;
   }
 
   // --- Phase 14e (before 14d): .data?.hash → .data ---
-  // useSendTransaction/useWriteContract return type changed from { hash } to direct hash.
-  // Only match when the base variable name looks like a hook result to avoid FP.
+  // v2 write hooks (useWriteContract/useSendTransaction) return data as raw hash string,
+  // v1 returned { data: { hash } }. Common pattern: `result.data?.hash` → `result.data`.
+  // Guard: only for variables with hook-result-like names to avoid FP.
   const hashKeyNodes = rootNode.findAll({
     rule: {
       kind: "property_identifier",
@@ -1136,9 +1152,12 @@ const codemod: Codemod<any> = async (root: any) => {
           a.text().includes("useToken("))
     );
     if (!hookCallAncestor) continue;
+    const src = rootNode.text();
+    let endPos = parent.range().end.index;
+    if (src[endPos] === ",") endPos = endPos + 1;
     edits.push({
       startPos: parent.range().start.index,
-      endPos: parent.range().end.index,
+      endPos: endPos,
       insertedText: "// TODO: formatUnits parameter deprecated in wagmi v2, use formatUnits from viem instead",
     });
     hasChanges = true;
@@ -1306,10 +1325,6 @@ const codemod: Codemod<any> = async (root: any) => {
     requiresTanStackQueryImport = true;
     break;
   }
-
-  // --- Phase 15 disabled: .data?.hash can be context-sensitive ---
-  // This rewrite was downgraded to preserve deterministic zero-FP behavior.
-  // AI/manual follow-up should handle this edge case in real repositories.
 
   // --- Phase 16: Normalize wagmi imports (rename specifiers + dedupe/merge) ---
   type SpecInfo = { name: string; isType: boolean };

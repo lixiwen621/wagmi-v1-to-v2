@@ -4,7 +4,7 @@ import { useAccount, useBalance, useReadContract, useSendTransaction, useWriteCo
 // suspense property removal
 const { data } = useBalance({
   address: '0x4557B18E779944BFE9d78A672452331C186a9f48',
-  // TODO: suspense property removed in wagmi v2, use useSuspenseQuery from wagmi/query instead,
+  // TODO: suspense property removed in wagmi v2, use useSuspenseQuery from wagmi/query instead
 })
 
 // Config object removed properties

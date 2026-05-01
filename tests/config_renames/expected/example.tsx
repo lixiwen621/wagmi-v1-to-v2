@@ -6,6 +6,6 @@ import { mainnet, sepolia } from 'wagmi/chains'
 // TODO: configureChains removed in wagmi v2, use createConfig with chains and transports directly
 
 export const config = createConfig({
-  // TODO: publicClient removed - use transports instead,
-      // TODO: autoConnect removed - use WagmiProvider reconnectOnMount or useReconnect,
+  // TODO: publicClient removed - use transports instead
+      // TODO: autoConnect removed - use WagmiProvider reconnectOnMount or useReconnect
 })

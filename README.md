@@ -166,7 +166,7 @@ Done: 40 edits across 9 files
 # Run all test fixtures (recommended)
 bash ./scripts/test-fixtures.sh
 
-# All 15 test directories:
+# All 16 test directories:
 # - tests/switch_network_destructuring/
 # - tests/hook_renames/
 # - tests/connector_renames/
@@ -182,6 +182,7 @@ bash ./scripts/test-fixtures.sh
 # - tests/config_api_changes/
 # - tests/removed_hooks_signer_provider/
 # - tests/use_contract_infinite_reads/
+# - tests/hash_return_shape/
 
 # Optional: run one fixture manually for debugging
 npx codemod workflow run -w workflow.yaml -t tests/hook_renames/input --allow-dirty

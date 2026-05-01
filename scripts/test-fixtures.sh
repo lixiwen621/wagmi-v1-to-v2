@@ -21,6 +21,7 @@ FIXTURES=(
   "config_api_changes"
   "removed_hooks_signer_provider"
   "use_contract_infinite_reads"
+  "hash_return_shape"
 )
 
 if [[ ! -f "$WORKFLOW_FILE" ]]; then

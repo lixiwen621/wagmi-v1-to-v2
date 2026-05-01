@@ -64,7 +64,7 @@ These are **repository-specific** edge cases, not generic mechanical renames. Th
 
 ## Deterministic accuracy (FP stance)
 
-- **Fixtures**: `15/15` regression directories pass in the codemod repository (`bash ./scripts/test-fixtures.sh`).
+- **Fixtures**: `16/16` regression directories pass in the codemod repository (`bash ./scripts/test-fixtures.sh`).
 - **Real repo**: Sampled review treated incorrect *deterministic* edits as FP; ambiguous type/API follow-ups are tracked separately (see README classification rule).
 
 ## Real-world impact
