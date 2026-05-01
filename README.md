@@ -199,6 +199,7 @@ The codemod runs as a TypeScript script executed via the codemod platform's JSSG
 | 0.5 | Connector `new` expressions: `new XxxConnector(args)` → `xxx(args)` |
 | 1 | Hook/connector/component/type identifier renames (with wagmi binding + shadowing guards) |
 | 1b | `Context` → `WagmiContext` (with wagmi binding guard) |
+| 1c | Narrow binding: `const { switchNetwork } = useSwitchNetwork()` → `const { switchChain } = useSwitchChain()` (matches source AST before Phase 1 edits land) |
 | 2 | Import source path rewrites (currently empty — all provider imports handled in Phase 3) |
 | 3 | `wagmi/providers/*` imports → TODO comment (provider functions don't exist in viem) |
 | 3b | `useSigner` / `useProvider` / `usePrepareSendTransaction` → TODO comment (removed in wagmi v2) |
