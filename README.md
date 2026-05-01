@@ -166,7 +166,8 @@ Done: 40 edits across 9 files
 # Run all test fixtures (recommended)
 bash ./scripts/test-fixtures.sh
 
-# All 14 test directories:
+# All 15 test directories:
+# - tests/switch_network_destructuring/
 # - tests/hook_renames/
 # - tests/connector_renames/
 # - tests/component_renames/
