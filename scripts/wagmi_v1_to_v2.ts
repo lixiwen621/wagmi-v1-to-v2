@@ -30,7 +30,6 @@ const HOOK_RENAMES: Replacement[] = [
   { regex: "useSwitchNetwork", new: "useSwitchChain" },
   { regex: "useWaitForTransaction", new: "useWaitForTransactionReceipt" },
   { regex: "usePrepareContractWrite", new: "useSimulateContract" },
-  { regex: "usePrepareSendTransaction", new: "useEstimateGas" },
   { regex: "useNetwork", new: "useAccount" },
 ];
 
@@ -356,6 +355,32 @@ const codemod: Codemod<any> = async (root: any) => {
     }
   }
 
+  // --- Phase 1c: useSwitchNetwork destructuring variable rename ---
+  // v1: const { switchNetwork } = useSwitchNetwork()
+  // v2: const { switchChain } = useSwitchChain()
+  const switchNetworkPatternNodes = [
+    ...rootNode.findAll({ rule: { kind: "identifier", regex: "^switchNetwork$" } }),
+    ...rootNode.findAll({ rule: { kind: "property_identifier", regex: "^switchNetwork$" } }),
+    ...rootNode.findAll({
+      rule: { kind: "shorthand_property_identifier", regex: "^switchNetwork$" },
+    }),
+    ...rootNode.findAll({
+      rule: { kind: "shorthand_property_identifier_pattern", regex: "^switchNetwork$" },
+    }),
+  ];
+  for (const node of switchNetworkPatternNodes) {
+    const declarator = node.ancestors().find((a) => a.kind() === "variable_declarator");
+    if (!declarator) continue;
+    const init = declarator.field("value");
+    if (!init || !/^\s*useSwitchChain\(/.test(init.text())) continue;
+    edits.push({
+      startPos: node.range().start.index,
+      endPos: node.range().end.index,
+      insertedText: "switchChain",
+    });
+    hasChanges = true;
+  }
+
   // --- Phase 2: Import path changes ---
   // Only match string literals in import paths, NOT import_specifier nodes
   for (const pathRepl of IMPORT_PATH_RENAMES) {
@@ -411,6 +436,163 @@ const codemod: Codemod<any> = async (root: any) => {
         });
         hasChanges = true;
         break;
+      }
+    }
+  }
+
+  // --- Phase 3b: useSigner and useProvider removal → TODO comments ---
+  // Removed in wagmi v2: useSigner → useWalletClient / useConnectorClient,
+  // useProvider → usePublicClient
+  for (const { hookName, v2Replacement, reason } of [
+    { hookName: "useSigner", v2Replacement: "useWalletClient", reason: "useSigner removed in wagmi v2, use useWalletClient or useConnectorClient for wallet interactions" },
+    { hookName: "useProvider", v2Replacement: "usePublicClient", reason: "useProvider removed in wagmi v2, use usePublicClient for RPC calls" },
+    { hookName: "usePrepareSendTransaction", v2Replacement: "useSimulateContract + useWriteContract / useEstimateGas", reason: "usePrepareSendTransaction removed in wagmi v2, use useSimulateContract + useWriteContract or useEstimateGas depending on context" },
+  ]) {
+    // Detect call expressions: const signer = useSigner()
+    const callNodes = rootNode.findAll({
+      rule: {
+        pattern: `${hookName}($$$)`,
+      },
+    });
+    const shouldHandleHook =
+      wagmiLocalBindings.has(hookName) && !localShadowedNames.has(hookName);
+    for (const node of callNodes) {
+      if (!shouldHandleHook) continue;
+      let targetNode: any = node;
+      for (const ancestor of node.ancestors()) {
+        if (ancestor.kind() === "lexical_declaration" || ancestor.kind() === "expression_statement") {
+          targetNode = ancestor;
+          break;
+        }
+      }
+      if (targetNode === node) {
+        const vd = node.ancestors().find((a) => a.kind() === "variable_declarator");
+        if (vd) targetNode = vd;
+        else continue;
+      }
+      edits.push({
+        startPos: targetNode.range().start.index,
+        endPos: targetNode.range().end.index,
+        insertedText: `// TODO: ${reason}`,
+      });
+      hasChanges = true;
+    }
+
+    // Also handle import specifier removal
+    const importSpecNodes = rootNode.findAll({
+      rule: {
+        kind: "import_specifier",
+        regex: `^${hookName}$`,
+      },
+    });
+    for (const node of importSpecNodes) {
+      const importStmt = getImportAncestor(node);
+      if (!importStmt || !isWagmiImportStatementText(importStmt.text())) continue;
+      const parent = node.parent();
+      if (!parent || parent.kind() !== "named_imports") continue;
+      const siblings = parent.children().filter((c) => c.kind() === "import_specifier");
+      if (siblings.length <= 1) {
+        const stmtText = importStmt.text().trim();
+        const defaultWithNamedMatch = stmtText.match(
+          /^import\s+((?:type\s+)?[A-Za-z_$][\w$]*)\s*,\s*\{[^}]*\}\s*from\s*(['"]wagmi(?:\/[^'"]*)?['"]);?$/
+        );
+        if (defaultWithNamedMatch) {
+          edits.push({
+            startPos: importStmt.range().start.index,
+            endPos: importStmt.range().end.index,
+            insertedText: `import ${defaultWithNamedMatch[1]} from ${defaultWithNamedMatch[2]}\n// TODO: ${reason}`,
+          });
+        } else {
+          edits.push({
+            startPos: importStmt.range().start.index,
+            endPos: importStmt.range().end.index,
+            insertedText: `// TODO: ${reason}`,
+          });
+        }
+        hasChanges = true;
+      } else {
+        // Multiple specifiers — defer to Phase 16 import normalization
+        continue;
+      }
+    }
+  }
+
+  // --- Phase 3c: ENS hooks — name normalization requirement → TODO ---
+  // In wagmi v2, useEnsAddress/useEnsAvatar/useEnsName/useEnsResolver require manual
+  // UTS-46 normalization via normalize() from 'viem/ens'.
+  const ENS_HOOKS = ["useEnsAddress", "useEnsAvatar", "useEnsName", "useEnsResolver"];
+  for (const hookName of ENS_HOOKS) {
+    const callNodes = rootNode.findAll({
+      rule: {
+        pattern: `${hookName}($$$)`,
+      },
+    });
+    const shouldHandleHook =
+      wagmiLocalBindings.has(hookName) && !localShadowedNames.has(hookName);
+    for (const node of callNodes) {
+      if (!shouldHandleHook) continue;
+      // Check if already has normalize() call in args
+      const fullText = node.text();
+      if (fullText.includes("normalize(")) continue;
+      edits.push({
+        startPos: node.range().start.index,
+        endPos: node.range().start.index,
+        insertedText: "// TODO: wrap ENS name with normalize() from 'viem/ens' in wagmi v2 (UTS-46 normalization required)\n",
+      });
+      hasChanges = true;
+    }
+  }
+
+  // --- Phase 3d: useDisconnect/useConnect return type changes → TODO ---
+  // In wagmi v2, useDisconnect returns a function directly (not an object).
+  // useConnect returns { accounts, chainId } instead of v1's { account, chain, connector }.
+  for (const { hookName, reason } of [
+    { hookName: "useDisconnect", reason: "useDisconnect returns a function directly in wagmi v2, not an object — update destructuring" },
+    { hookName: "useConnect", reason: "useConnect returns { accounts, chainId } in wagmi v2, not { account, chain, connector }" },
+  ]) {
+    const callNodes = rootNode.findAll({
+      rule: {
+        pattern: `${hookName}($$$)`,
+      },
+    });
+    const shouldHandleHook =
+      wagmiLocalBindings.has(hookName) && !localShadowedNames.has(hookName);
+    for (const node of callNodes) {
+      if (!shouldHandleHook) continue;
+      edits.push({
+        startPos: node.range().start.index,
+        endPos: node.range().start.index,
+        insertedText: `// TODO: ${reason}\n`,
+      });
+      hasChanges = true;
+    }
+  }
+
+  // --- Phase 3e: wagmi/actions parameter changes → TODO ---
+  // In wagmi v2, all action functions in wagmi/actions require config as first param:
+  // getAccount() → getAccount(config), getWalletClient() → getWalletClient(config)
+  for (const actionName of ["getAccount", "getWalletClient"]) {
+    const callNodes = rootNode.findAll({
+      rule: {
+        pattern: `${actionName}($$$)`,
+      },
+    });
+    for (const node of callNodes) {
+      const importStmt = getImportAncestor(node);
+      // Only flag if imported from wagmi/actions
+      if (!importStmt || !/from\s+['"]wagmi\/actions['"]/.test(importStmt.text())) continue;
+      const fullText = node.text();
+      // Skip if already has config param
+      const openParen = fullText.indexOf("(");
+      const closeParen = fullText.lastIndexOf(")");
+      const args = openParen >= 0 && closeParen > openParen ? fullText.slice(openParen + 1, closeParen).trim() : "";
+      if (!args || args === "{}") {
+        edits.push({
+          startPos: node.range().start.index,
+          endPos: node.range().start.index,
+          insertedText: `// TODO: ${actionName}(config) now requires config as first param in wagmi v2\n`,
+        });
+        hasChanges = true;
       }
     }
   }
@@ -931,7 +1113,7 @@ const codemod: Codemod<any> = async (root: any) => {
       edits.push({
         startPos: parent.range().start.index,
         endPos: parent.range().end.index,
-        insertedText: `// TODO: ${fullText} removed in wagmi v2`,
+        insertedText: `(null as any) /* TODO: ${fullText} removed in wagmi v2 */`,
       });
       hasChanges = true;
     }
@@ -987,10 +1169,13 @@ const codemod: Codemod<any> = async (root: any) => {
         (a) => a.kind() === "call_expression" && a.text().includes("use")
       );
       if (!hookCallAncestor) continue;
+      const todoMsg = param === "cacheTime"
+        ? "// TODO: move 'cacheTime' to 'gcTime' inside query property in wagmi v2 (TanStack Query v5 renamed cacheTime → gcTime)\n"
+        : "// TODO: move '" + param + "' to query property in wagmi v2 (TanStack Query param)\n";
       edits.push({
         startPos: parent.range().start.index,
         endPos: parent.range().start.index,
-        insertedText: "// TODO: move '" + param + "' to query property in wagmi v2 (TanStack Query param)\n",
+        insertedText: todoMsg,
       });
       hasChanges = true;
     }
@@ -1183,6 +1368,9 @@ const codemod: Codemod<any> = async (root: any) => {
         group.specifiers.push({ name: `${renamedImported} as ${aliasMatch[2]}`, isType });
       } else {
         if (spec === "useToken") continue;
+        if (spec === "useSigner") continue;
+        if (spec === "useProvider") continue;
+        if (spec === "usePrepareSendTransaction") continue;
         if (spec === "getConfig") continue;
         if (spec === "useWebSocketPublicClient") continue;
         let renamed = renameSymbolExact(spec);
@@ -1255,6 +1443,20 @@ const codemod: Codemod<any> = async (root: any) => {
         remaining.push(spec);
       }
     }
+    // Flag deprecated goerli testnet (replaced by sepolia)
+    const hasGoerli = chainSpecifiers.some((s) => {
+      const aliasMatch = s.name.match(/^([A-Za-z_$][\w$]*)(?:\s+as\s+[A-Za-z_$][\w$]*)?$/);
+      return (aliasMatch ? aliasMatch[1] : s.name) === "goerli";
+    });
+    if (hasGoerli) {
+      edits.push({
+        startPos: 0,
+        endPos: 0,
+        insertedText: "// TODO: goerli testnet deprecated in wagmi v2, use sepolia instead\n",
+      });
+      hasChanges = true;
+    }
+
     // Extract chain imports to 'wagmi/chains'
     if (chainSpecifiers.length > 0) {
       const chainsGroup = importGroups.get("|wagmi/chains");
@@ -1312,7 +1514,17 @@ const codemod: Codemod<any> = async (root: any) => {
     const formatted = unique
       .map(s => s.isType ? `type ${s.name}` : s.name)
       .sort();
-    if (formatted.length === 0) continue;
+    if (formatted.length === 0) {
+      for (const node of group.nodes) {
+        edits.push({
+          startPos: node.range().start.index,
+          endPos: node.range().end.index,
+          insertedText: "",
+        });
+        hasChanges = true;
+      }
+      continue;
+    }
     const mergedLine = `import ${group.prefix}{ ${formatted.join(", ")} } from ${group.quote}${group.source}${group.quote}`;
 
     const firstNode = group.nodes[0];
