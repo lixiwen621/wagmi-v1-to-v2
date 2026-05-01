@@ -1,0 +1,32 @@
+name: Fixture Regression
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  fixture-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Print tool versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Install codemod CLI
+        run: npm i -g codemod@1.8.2
+
+      - name: Run fixture regression
+        run: bash ./scripts/test-fixtures.sh
