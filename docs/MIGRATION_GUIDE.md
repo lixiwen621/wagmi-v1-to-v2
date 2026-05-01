@@ -224,6 +224,9 @@ const formatted = nativeBalance
 1. For token balances: replace `useBalance({ token })` with `useReadContracts` calling `balanceOf`, `decimals`, and `symbol`
 2. For `unit` formatting: remove the param, call `formatUnits(value, decimals)` on the result using viem
 
+> **Note:** Even for native currency balances (no `token`/`unit` param), `useBalance` return shape changed in v2.
+> The `formatted` property was removed from the result. Use `formatUnits(value, decimals)` from viem on the raw result.
+
 ---
 
 ### 5. useToken → useReadContracts

@@ -112,12 +112,15 @@ Done: 40 edits across 9 files
 | `useContractRead`             | `useReadContract`              |
 | `useContractReads`            | `useReadContracts`             |
 | `useContractWrite`            | `useWriteContract`             |
-| `usePrepareContractWrite`     | `useSimulateContract`          |
 | `useWaitForTransaction`       | `useWaitForTransactionReceipt` |
 | `useContractEvent`            | `useWatchContractEvent`        |
 | `useFeeData`                  | `useEstimateFeesPerGas`        |
 | `useContractInfiniteReads`    | `useInfiniteReadContracts`     |
+| `usePrepareContractWrite`     | `useSimulateContract`          |
+| `usePrepareSendTransaction`   | `useEstimateGas`               |
 | `useToken`                    | Removed — use `useReadContracts` |
+| `useSigner`                   | Removed — use `useWalletClient` |
+| `useProvider`                 | Removed — use `usePublicClient` |
 
 ### Connector Changes
 
@@ -163,7 +166,7 @@ Done: 40 edits across 9 files
 # Run all test fixtures (recommended)
 bash ./scripts/test-fixtures.sh
 
-# All 12 test directories:
+# All 14 test directories:
 # - tests/hook_renames/
 # - tests/connector_renames/
 # - tests/component_renames/
@@ -176,6 +179,8 @@ bash ./scripts/test-fixtures.sh
 # - tests/use_network_chains/
 # - tests/removed_properties/
 # - tests/config_api_changes/
+# - tests/removed_hooks_signer_provider/
+# - tests/use_contract_infinite_reads/
 
 # Optional: run one fixture manually for debugging
 npx codemod workflow run -w workflow.yaml -t tests/hook_renames/input --allow-dirty
@@ -195,6 +200,10 @@ The codemod runs as a TypeScript script executed via the codemod platform's JSSG
 | 1b | `Context` → `WagmiContext` (with wagmi binding guard) |
 | 2 | Import source path rewrites (currently empty — all provider imports handled in Phase 3) |
 | 3 | `wagmi/providers/*` imports → TODO comment (provider functions don't exist in viem) |
+| 3b | `useSigner` / `useProvider` / `usePrepareSendTransaction` → TODO comment (removed in wagmi v2) |
+| 3c | ENS hooks (`useEnsAddress`/`useEnsAvatar`/`useEnsName`/`useEnsResolver`) → `normalize()` reminder TODO |
+| 3d | `useDisconnect` / `useConnect` return type changes → TODO comment |
+| 3e | `wagmi/actions` functions (`getAccount`, `getWalletClient`) require config param → TODO |
 | 3a | `useWebSocketPublicClient` → TODO comment |
 | 4 | Connector entrypoint normalization (`wagmi/connectors/*` → `wagmi/connectors`) |
 | 5 | `useToken` call → TODO comment |
@@ -213,12 +222,12 @@ The codemod runs as a TypeScript script executed via the codemod platform's JSSG
 | 14f | `formatUnits` parameter in hooks → TODO comment |
 | 14g | `config.setConnectors` → `config._internal.setConnectors` |
 | 14h | `getConfig()` → TODO comment |
-| 14i | TanStack Query params (`enabled`, `staleTime`, etc.) → TODO comment (must move to `query` property) |
+| 14i | TanStack Query params (`enabled`, `staleTime`, etc.) → TODO comment (must move to `query` property; `cacheTime` noted as `gcTime` rename) |
 | 14j | `paginatedIndexesConfig` usage → TODO comment |
 | 14k | Mutation setup arguments (`useSignMessage`, `useSignTypedData`, `useSendTransaction`) → TODO comment |
 | 15 | TanStack Query peer dependency detection: `QueryClient`/`QueryClientProvider` import + TODO comment on files with `WagmiProvider`/`WagmiConfig` |
 | 16 | wagmi import normalization (specifier rename, dedupe, merge, inline `type` modifier handling) |
-| 17 | Chain imports extracted to `wagmi/chains`, `erc20Abi` to `viem` |
+| 17 | Chain imports extracted to `wagmi/chains`, `erc20Abi` to `viem`; deprecated `goerli` testnet flagged |
 
 Phase ordering is designed to reduce edit conflicts: constructor-expression transforms run before identifier renames, `.data?.hash` (Phase 14e) runs before config property guards (Phase 14d), and import normalization runs at the end.
 
